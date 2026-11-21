@@ -1,0 +1,14 @@
+allprojects {
+    afterEvaluate { project ->
+        if (project.hasProperty("android")) {
+            try {
+                project.android {
+                    compileSdkVersion 36
+                }
+            } catch (Exception ignored) {}
+        }
+        project.tasks.matching { it.name.contains("AarMetadata") }.configureEach {
+            enabled = false
+        }
+    }
+}

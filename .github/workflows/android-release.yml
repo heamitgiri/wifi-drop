@@ -39,7 +39,7 @@ jobs:
         run: flutter test
 
       - name: Build Android Debug APK
-        run: flutter build apk --debug --android-skip-build-dependency-validation
+        run: flutter build apk --debug --android-skip-build-dependency-validation -- --init-script android/init.gradle
 
       - name: Generate Checksum
         run: |
