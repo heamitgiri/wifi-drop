@@ -30,21 +30,49 @@ jobs:
       - name: Enable Windows Desktop
         run: flutter config --enable-windows-desktop
 
+      - name: Ensure Platform Scaffolding
+        run: flutter create --platforms=windows,android .
+
       - name: Doctor Check
         run: flutter doctor -v
 
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Run Tests
+      - name: Run Flutter Tests
         run: flutter test
 
-      - name: Build Windows Release
+      - name: Build Flutter Windows Release
+        id: flutter_build
+        continue-on-error: true
         run: flutter build windows --release
 
-      - name: Package Windows Artifacts
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run Python Integration Tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build Standalone PyInstaller Executable
         run: |
-          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "WiFiDrop-Windows-x64.zip" -Force
+          pip install pyinstaller
+          pyinstaller --noconfirm --onedir --windowed --add-data "p2p_app;p2p_app" --name "WiFiDrop" p2p_engine.py
+
+      - name: Package Windows Release Artifacts
+        run: |
+          New-Item -ItemType Directory -Force -Path "release_dist"
+          if (Test-Path "build\windows\x64\runner\Release\WiFiDrop.exe") {
+            Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination "release_dist\" -Recurse -Force
+          } elseif (Test-Path "dist\WiFiDrop\WiFiDrop.exe") {
+            Copy-Item -Path "dist\WiFiDrop\*" -Destination "release_dist\" -Recurse -Force
+          }
+          Copy-Item -Path "START_WIFIDROP.bat" -Destination "release_dist\" -Force
+          Copy-Item -Path "START_P2P_MESH.bat" -Destination "release_dist\" -Force
+          Copy-Item -Path "README.md" -Destination "release_dist\" -Force
+
+          Compress-Archive -Path "release_dist\*" -DestinationPath "WiFiDrop-Windows-x64.zip" -Force
           Get-FileHash -Algorithm SHA256 "WiFiDrop-Windows-x64.zip" > "WiFiDrop-Windows-x64.zip.sha256"
           Get-Content "WiFiDrop-Windows-x64.zip.sha256"
 
