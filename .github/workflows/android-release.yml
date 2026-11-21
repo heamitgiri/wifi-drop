@@ -31,11 +31,7 @@ jobs:
         run: |
           flutter create --platforms=android .
           rm -f test/widget_test.dart
-          if [ -f android/build.gradle.kts ]; then
-            echo 'subprojects { afterEvaluate { tasks.withType<com.android.build.gradle.tasks.AarMetadataTask>().configureEach { enabled = false } } }' >> android/build.gradle.kts
-          elif [ -f android/build.gradle ]; then
-            echo 'subprojects { afterEvaluate { project -> project.tasks.withType(com.android.build.gradle.tasks.AarMetadataTask) { enabled = false } } }' >> android/build.gradle
-          fi
+          echo 'subprojects { tasks.configureEach { if (name.contains("AarMetadata")) { enabled = false } } }' >> android/build.gradle.kts
 
       - name: Install Dependencies
         run: flutter pub get
