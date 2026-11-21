@@ -9,7 +9,8 @@ class ReceivedFileService {
   ReceivedFileService._internal();
 
   String sanitizeFileName(String rawName) {
-    var name = p.basename(rawName);
+    var normalized = rawName.replaceAll('\\', '/');
+    var name = p.basename(normalized);
     name = name.replaceAll(RegExp(r'[\\/:*?"<>|\x00]'), '_').trim();
     while (name.startsWith('.')) {
       name = name.substring(1).trim();

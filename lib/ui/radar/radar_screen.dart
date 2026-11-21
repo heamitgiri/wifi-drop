@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/discovery/discovery_service.dart';
 import '../../core/discovery/peer_registry.dart';
 import '../../core/models/peer.dart';
+import '../../core/models/transfer.dart';
 import '../../core/network/connection_service.dart';
 import '../../core/storage/storage_service.dart';
 import '../receive/incoming_request.dart';

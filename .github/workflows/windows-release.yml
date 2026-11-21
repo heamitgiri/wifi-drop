@@ -31,7 +31,9 @@ jobs:
         run: flutter config --enable-windows-desktop
 
       - name: Ensure Platform Scaffolding
-        run: flutter create --platforms=windows,android .
+        run: |
+          flutter create --platforms=windows,android .
+          if (Test-Path "test\widget_test.dart") { Remove-Item "test\widget_test.dart" -Force }
 
       - name: Doctor Check
         run: flutter doctor -v
