@@ -1,0 +1,58 @@
+name: Build Windows 11 Release EXE
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Enable Windows Desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Doctor Check
+        run: flutter doctor -v
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Run Tests
+        run: flutter test
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Package Windows Artifacts
+        run: |
+          Compress-Archive -Path "build\windows\x64\runner\Release\*" -DestinationPath "WiFiDrop-Windows-x64.zip" -Force
+          Get-FileHash -Algorithm SHA256 "WiFiDrop-Windows-x64.zip" > "WiFiDrop-Windows-x64.zip.sha256"
+          Get-Content "WiFiDrop-Windows-x64.zip.sha256"
+
+      - name: Upload Windows Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WiFiDrop-Windows-x64
+          path: |
+            WiFiDrop-Windows-x64.zip
+            WiFiDrop-Windows-x64.zip.sha256
+          retention-days: 14

@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0785F8">
+  <title>WiFi Drop — Searching Devices</title>
+  <style>
+    :root {
+      --canvas: #0785F8;
+      --deep-blue: #0071E5;
+      --font-stack: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-stack);
+      background: var(--canvas);
+      color: #FFFFFF;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    button, input { font: inherit; outline: none; }
+    button { cursor: pointer; border: none; }
+
+    /* Main Container */
+    .app {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 20px 24px;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Top Bar */
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 19px;
+      letter-spacing: -0.03em;
+    }
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .action-btn {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      border-radius: 100px;
+      color: #FFFFFF;
+      padding: 8px 15px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+    .action-btn:hover { background: rgba(255, 255, 255, 0.26); }
+    .badge {
+      background: #FFC300;
+      color: #10253D;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+
+    /* Hero Header */
+    .hero {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .hero h1 {
+      font-weight: 800;
+      font-size: clamp(28px, 4.2vw, 42px);
+      letter-spacing: -0.05em;
+      margin-bottom: 6px;
+    }
+    .hero p {
+      color: #D9EEFF;
+      font-size: clamp(13px, 1.8vw, 15px);
+    }
+
+    /* Radar Area */
+    .radar-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 540px;
+      aspect-ratio: 1;
+      margin: 0 auto;
+      flex: 1;
+      display: grid;
+      place-items: center;
+    }
+    .radar-svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .ring {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.22);
+      stroke-width: 1.2px;
+    }
+    .inner-fill {
+      fill: rgba(255, 255, 255, 0.10);
+      stroke: rgba(255, 255, 255, 0.28);
+      stroke-width: 1px;
+    }
+    .center-halo {
+      fill: #0588F7;
+      stroke: #93DBFF;
+      stroke-width: 8px;
+    }
+
+    /* Self Device Node */
+    .self-node {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+      z-index: 2;
+    }
+    .self-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #E9F9FF;
+      text-shadow: 0 1px 4px #0565C8;
+      white-space: nowrap;
+    }
+
+    /* Peer Nodes */
+    .peer-node {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      z-index: 5;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .peer-node:hover {
+      transform: translate(-50%, -50%) scale(1.15);
+    }
+    .peer-bubble {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      box-shadow: 0 6px 18px rgba(0, 37, 84, 0.28);
+      border: 1.5px solid #FFFFFF;
+      transition: border 0.15s;
+    }
+    .peer-node:hover .peer-bubble {
+      border: 2.5px solid #FFFFFF;
+      box-shadow: 0 8px 24px rgba(255, 255, 255, 0.35);
+    }
+    .peer-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #FFFFFF;
+      text-shadow: 0 1px 4px #0565C8;
+      max-width: 110px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-align: center;
+    }
+
+    /* Empty state */
+    .empty-hint {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 20px;
+      padding: 8px 18px;
+      font-size: 13px;
+      color: #D9EEFF;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+
+    /* Bottom Scanning Area */
+    .bottom-section {
+      text-align: center;
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .scanner-line {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .spin {
+      animation: rot 2s linear infinite;
+    }
+    @keyframes rot { to { transform: rotate(360deg); } }
+
+    /* Device Pill */
+    .my-device-pill {
+      background: var(--deep-blue);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 25px;
+      padding: 10px 22px;
+      font-size: 13px;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: #FFFFFF;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+      transition: filter 0.15s;
+    }
+    .my-device-pill:hover { filter: brightness(1.1); }
+    .my-device-pill strong { font-weight: 700; }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 37, 84, 0.65);
+      backdrop-filter: blur(8px);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      z-index: 100;
+    }
+    .modal-card {
+      background: #FFFFFF;
+      color: #10253D;
+      border-radius: 20px;
+      width: min(100%, 450px);
+      padding: 24px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+    }
+    .modal-title { font-size: 20px; font-weight: 800; margin-bottom: 8px; }
+    .modal-desc { font-size: 14px; color: #586778; margin-bottom: 18px; line-height: 1.5; }
+    .btn-row { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-primary {
+      background: var(--canvas);
+      color: #FFFFFF;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-weight: 700;
+    }
+    .btn-secondary {
+      background: #EDF4FF;
+      color: #17497A;
+      border-radius: 10px;
+      padding: 11px 18px;
+      font-weight: 600;
+    }
+    .form-group { margin-bottom: 14px; text-align: left; }
+    .form-group label { display: block; font-size: 12px; font-weight: 700; margin-bottom: 6px; color: #334e68; }
+    .form-group input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid #CFD9E7;
+      font-size: 14px;
+    }
+    .hidden { display: none !important; }
+
+    /* File items */
+    .file-box {
+      background: #F4F8FC;
+      border: 1px dashed #A5C8ED;
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .progress-bar-wrap {
+      height: 8px;
+      background: #E2ECF7;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--canvas);
+      width: 0%;
+      transition: width 0.2s;
+    }
+  </style>
+</head>
+<body>
+
+  <main class="app">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/>
+            <path d="M1.42 9a16 16 0 0 1 21.16 0"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <circle cx="12" cy="20" r="1"/>
+          </svg>
+        </div>
+        <span>WiFi Drop</span>
+      </div>
+      <div class="top-actions">
+        <button class="action-btn" id="transfersBtn">
+          ⇵ Transfers <span class="badge hidden" id="pendingBadge">0</span>
+        </button>
+        <button class="action-btn" id="settingsBtn">⚙ Settings</button>
+      </div>
+    </header>
+
+    <!-- Hero Title -->
+    <section class="hero">
+      <h1>Searching Devices</h1>
+      <p>Quickly scan nearby WiFi Drop devices and share files.</p>
+    </section>
+
+    <!-- Radar Screen Center -->
+    <div class="radar-wrapper" id="radarArea">
+      <svg class="radar-svg" viewBox="0 0 600 600" aria-hidden="true">
+        <!-- 4 Fine Concentric Rings -->
+        <circle class="ring" cx="300" cy="300" r="280"/>
+        <circle class="ring" cx="300" cy="300" r="224"/>
+        <circle class="inner-fill" cx="300" cy="300" r="168"/>
+        <circle class="ring" cx="300" cy="300" r="102"/>
+        <!-- Center Halo -->
+        <circle class="center-halo" cx="300" cy="300" r="38"/>
+      </svg>
+
+      <!-- Center Self Node -->
+      <div class="self-node">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <rect x="4" y="4" width="16" height="12" rx="2"/>
+          <path d="M2 19h20"/>
+        </svg>
+        <div class="self-name" id="selfNameLabel">My Device</div>
+      </div>
+
+      <!-- Peer Nodes injected dynamically -->
+      <div id="peersContainer"></div>
+
+      <!-- Empty State Hint -->
+      <div class="empty-hint" id="emptyHint">
+        Open WiFi Drop on another device connected to the same Wi-Fi.
+      </div>
+    </div>
+
+    <!-- Bottom Status & Device Pill -->
+    <section class="bottom-section">
+      <div class="scanner-line">
+        <svg class="spin" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M20 11a8 8 0 0 0-14-5L3 9M3 4v5h5M4 13a8 8 0 0 0 14 5l3-3m0 5v-5h-5"/>
+        </svg>
+        <span id="scannerStatus">Searching for nearby devices on your Wi-Fi…</span>
+      </div>
+
+      <div class="my-device-pill" id="devicePill">
+        <span>My Device:</span>
+        <strong id="pillDeviceName">Laptop</strong>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        </svg>
+      </div>
+    </section>
+  </main>
+
+  <!-- Send File Modal -->
+  <div class="modal-backdrop hidden" id="sendModal">
+    <div class="modal-card">
+      <h2 class="modal-title" id="sendTargetTitle">Send Files</h2>
+      <p class="modal-desc">Receiver must accept the file before the transfer starts.</p>
+      <div class="file-box">
+        <input type="file" id="filePicker" multiple style="width:100%"/>
+      </div>
+      <div id="sendProgressSection" class="hidden">
+        <div style="font-size:12px;color:#586778" id="sendProgressText">Streaming file...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="sendProgressBar"></div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="cancelSendBtn">Cancel</button>
+        <button class="btn-primary" id="confirmSendBtn">Send Files</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Incoming Request Modal -->
+  <div class="modal-backdrop hidden" id="incomingModal">
+    <div class="modal-card">
+      <h2 class="modal-title">Incoming File Transfer</h2>
+      <p class="modal-desc" id="incomingDesc">Laptop 1 wants to send you a file.</p>
+      <div class="file-box">
+        <strong id="incomingFileName" style="display:block;margin-bottom:4px">document.pdf</strong>
+        <span id="incomingFileSize" style="font-size:12px;color:#586778">12.5 MB</span>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="declineIncomingBtn">Decline</button>
+        <button class="btn-primary" id="acceptIncomingBtn">Accept</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop hidden" id="settingsModal">
+    <div class="modal-card">
+      <h2 class="modal-title">Settings</h2>
+      <div class="form-group">
+        <label for="editDeviceName">Device Name</label>
+        <input type="text" id="editDeviceName" placeholder="e.g. Living Room PC"/>
+      </div>
+      <div class="form-group">
+        <label for="editSaveFolder">Received Files Location</label>
+        <input type="text" id="editSaveFolder"/>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="editAskToggle" checked/>
+        <label for="editAskToggle" style="margin:0">Ask before receiving files</label>
+      </div>
+      <div class="btn-row">
+        <button class="btn-secondary" id="closeSettingsBtn">Close</button>
+        <button class="btn-primary" id="saveSettingsBtn">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const palette = ['#16C6DA', '#FFC300', '#A72BF4', '#F026BE', '#15CF9E', '#F9783E', '#6178F7', '#EE4473'];
+    let myInfo = null;
+    let selectedPeer = null;
+    let currentIncomingTid = null;
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch('/api/status');
+        const data = await res.json();
+        myInfo = data.me;
+
+        // Update Self info
+        document.getElementById('selfNameLabel').textContent = myInfo.name;
+        document.getElementById('pillDeviceName').textContent = myInfo.name;
+
+        // Render Peers
+        renderPeers(data.peers);
+
+        // Check for incoming transfers
+        const incoming = data.transfers.find(t => t.is_incoming && t.status === 'pending');
+        if (incoming && !currentIncomingTid) {
+          showIncomingRequest(incoming);
+        }
+
+        // Update badge
+        const activeCount = data.transfers.filter(t => t.status === 'transferring').length;
+        const badge = document.getElementById('pendingBadge');
+        if (activeCount > 0) {
+          badge.textContent = activeCount;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      } catch (err) {
+        document.getElementById('scannerStatus').textContent = 'Reconnecting to local network…';
+      }
+    }
+
+    function renderPeers(peers) {
+      const container = document.getElementById('peersContainer');
+      const emptyHint = document.getElementById('emptyHint');
+      const statusText = document.getElementById('scannerStatus');
+
+      container.innerHTML = '';
+      if (peers.length === 0) {
+        emptyHint.classList.remove('hidden');
+        statusText.textContent = 'Searching for nearby devices on your Wi-Fi…';
+        return;
+      }
+
+      emptyHint.classList.add('hidden');
+      statusText.textContent = `${peers.length} device${peers.length === 1 ? '' : 's'} available on this Wi-Fi`;
+
+      const n = peers.length;
+      peers.forEach((peer, i) => {
+        const angle = ((i * 137.508 + 225) * Math.PI) / 180;
+        const radius = n <= 4 ? (i % 2 === 0 ? 37 : 43) : 41;
+        const x = 50 + radius * Math.cos(angle);
+        const y = 50 + radius * Math.sin(angle);
+
+        const btn = document.createElement('button');
+        btn.className = 'peer-node';
+        btn.style.left = `${x}%`;
+        btn.style.top = `${y}%`;
+        btn.onclick = () => openSendModal(peer);
+
+        const color = palette[peer.color_index % palette.length];
+        const iconSvg = peer.type === 'phone'
+          ? '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>'
+          : '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><rect x="4" y="4" width="16" height="12" rx="2"/><path d="M2 19h20"/></svg>';
+
+        btn.innerHTML = `
+          <div class="peer-bubble" style="background:${color}">${iconSvg}</div>
+          <span class="peer-label">${escapeHtml(peer.name)}</span>
+        `;
+        container.appendChild(btn);
+      });
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+    }
+
+    function openSendModal(peer) {
+      selectedPeer = peer;
+      document.getElementById('sendTargetTitle').textContent = `Send to ${peer.name}`;
+      document.getElementById('sendProgressSection').classList.add('hidden');
+      document.getElementById('sendProgressBar').style.width = '0%';
+      document.getElementById('sendModal').classList.remove('hidden');
+    }
+
+    document.getElementById('cancelSendBtn').onclick = () => {
+      document.getElementById('sendModal').classList.add('hidden');
+      selectedPeer = null;
+    };
+
+    document.getElementById('confirmSendBtn').onclick = async () => {
+      const files = document.getElementById('filePicker').files;
+      if (!files.length || !selectedPeer) return;
+
+      const file = files[0];
+      const tid = Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+
+      document.getElementById('sendProgressSection').classList.remove('hidden');
+      document.getElementById('sendProgressText').textContent = `Offering ${file.name} to ${selectedPeer.name}…`;
+
+      try {
+        // 1. Send Offer to Peer's HTTP Port
+        const offerRes = await fetch(`http://${selectedPeer.ip}:${selectedPeer.port}/api/p2p/offer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transfer_id: tid,
+            sender_id: myInfo.id,
+            sender_name: myInfo.name,
+            file_name: file.name,
+            file_size: file.size
+          })
+        });
+
+        const decision = await offerRes.json();
+        if (!decision.accepted) {
+          alert(`${selectedPeer.name} declined or waiting for decision.`);
+          document.getElementById('sendModal').classList.add('hidden');
+          return;
+        }
+
+        // 2. Stream Data to Peer
+        document.getElementById('sendProgressText').textContent = `Streaming ${file.name}…`;
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `http://${selectedPeer.ip}:${selectedPeer.port}/api/p2p/stream`);
+        xhr.setRequestHeader('X-Transfer-Id', tid);
+        xhr.setRequestHeader('Content-Length', file.size);
+
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) {
+            const pct = ((e.loaded / e.total) * 100).toFixed(0);
+            document.getElementById('sendProgressBar').style.width = `${pct}%`;
+            document.getElementById('sendProgressText').textContent = `Uploading: ${pct}%`;
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status === 200) {
+            alert('Transfer complete!');
+          } else {
+            alert('Transfer failed: ' + xhr.responseText);
+          }
+          document.getElementById('sendModal').classList.add('hidden');
+        };
+
+        xhr.onerror = () => {
+          alert('Network error during transfer');
+          document.getElementById('sendModal').classList.add('hidden');
+        };
+
+        xhr.send(file);
+      } catch (err) {
+        alert('Could not reach peer: ' + err.message);
+        document.getElementById('sendModal').classList.add('hidden');
+      }
+    };
+
+    function showIncomingRequest(tx) {
+      currentIncomingTid = tx.id;
+      document.getElementById('incomingDesc').textContent = `${tx.peer_name} wants to send you a file.`;
+      document.getElementById('incomingFileName').textContent = tx.file_name;
+      document.getElementById('incomingFileSize').textContent = formatBytes(tx.file_size);
+      document.getElementById('incomingModal').classList.remove('hidden');
+    }
+
+    document.getElementById('acceptIncomingBtn').onclick = async () => {
+      if (!currentIncomingTid) return;
+      await fetch('/api/control/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transfer_id: currentIncomingTid, accept: true })
+      });
+      document.getElementById('incomingModal').classList.add('hidden');
+      currentIncomingTid = null;
+      fetchStatus();
+    };
+
+    document.getElementById('declineIncomingBtn').onclick = async () => {
+      if (!currentIncomingTid) return;
+      await fetch('/api/control/decision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ transfer_id: currentIncomingTid, accept: false })
+      });
+      document.getElementById('incomingModal').classList.add('hidden');
+      currentIncomingTid = null;
+      fetchStatus();
+    };
+
+    // Settings
+    document.getElementById('settingsBtn').onclick = () => {
+      if (!myInfo) return;
+      document.getElementById('editDeviceName').value = myInfo.name;
+      document.getElementById('editSaveFolder').value = myInfo.save_folder;
+      document.getElementById('editAskToggle').checked = myInfo.ask_before_receiving;
+      document.getElementById('settingsModal').classList.remove('hidden');
+    };
+    document.getElementById('devicePill').onclick = () => document.getElementById('settingsBtn').click();
+    document.getElementById('closeSettingsBtn').onclick = () => document.getElementById('settingsModal').classList.add('hidden');
+    document.getElementById('saveSettingsBtn').onclick = async () => {
+      await fetch('/api/control/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: document.getElementById('editDeviceName').value,
+          save_folder: document.getElementById('editSaveFolder').value,
+          ask_before_receiving: document.getElementById('editAskToggle').checked
+        })
+      });
+      document.getElementById('settingsModal').classList.add('hidden');
+      fetchStatus();
+    };
+
+    function formatBytes(bytes) {
+      if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+      if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+      if (bytes >= 1024) return (bytes / 1024).toFixed(1) + ' KB';
+      return bytes + ' B';
+    }
+
+    setInterval(fetchStatus, 2500);
+    fetchStatus();
+  </script>
+</body>
+</html>
